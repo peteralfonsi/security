@@ -72,6 +72,7 @@ import org.greenrobot.eventbus.Subscribe;
 import static org.opensearch.security.OpenSearchSecurityPlugin.LEGACY_OPENDISTRO_PREFIX;
 import static org.opensearch.security.OpenSearchSecurityPlugin.PLUGINS_PREFIX;
 import static org.opensearch.security.support.ConfigConstants.OPENDISTRO_SECURITY_INITIATING_USER;
+import static org.opensearch.security.support.ConfigConstants.TRACEPARENT_HEADER;
 
 public class SecurityRestFilter {
 
@@ -125,6 +126,7 @@ public class SecurityRestFilter {
 
         @Override
         public void handleRequest(RestRequest request, RestChannel channel, NodeClient client) throws Exception {
+            // TODO: Start security REST request logging here?
             final Optional<SecurityResponse> maybeSavedResponse = NettyAttribute.popFrom(
                 request,
                 Netty4HttpRequestHeaderVerifier.EARLY_RESPONSE
@@ -139,9 +141,13 @@ public class SecurityRestFilter {
             NettyAttribute.popFrom(request, Netty4HttpRequestHeaderVerifier.CONTEXT_TO_RESTORE).ifPresent(storedContext -> {
                 // X_OPAQUE_ID will be overritten on restore - save to apply after restoring the saved context
                 final String xOpaqueId = threadContext.getHeader(Task.X_OPAQUE_ID);
+                final String traceparent = threadContext.getHeader(TRACEPARENT_HEADER); // TODO: This is null even when it shouldnt be
                 storedContext.restore();
                 if (xOpaqueId != null) {
                     threadContext.putHeader(Task.X_OPAQUE_ID, xOpaqueId);
+                }
+                if (traceparent != null) {
+                    threadContext.putHeader(TRACEPARENT_HEADER, traceparent);
                 }
             });
 

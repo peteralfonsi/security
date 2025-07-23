@@ -413,6 +413,9 @@ public class ConfigConstants {
     // Variable for initial admin password support
     public static final String OPENSEARCH_INITIAL_ADMIN_PASSWORD = "OPENSEARCH_INITIAL_ADMIN_PASSWORD";
 
+    // TODO: Present here for testing only, may not be right place for it.
+    public static final String TRACEPARENT_HEADER = "traceparent";
+
     public static Set<String> getSettingAsSet(
         final Settings settings,
         final String key,

@@ -73,6 +73,8 @@ import org.opensearch.transport.TransportRequestHandler;
 import org.opensearch.transport.TransportRequestOptions;
 import org.opensearch.transport.TransportResponseHandler;
 
+import static org.opensearch.security.support.ConfigConstants.TRACEPARENT_HEADER;
+
 public class SecurityInterceptor {
 
     protected final Logger log = LogManager.getLogger(getClass());
@@ -142,6 +144,12 @@ public class SecurityInterceptor {
         DiscoveryNode localNode
     ) {
         final Map<String, String> origHeaders0 = getThreadContext().getHeaders();
+        if (!action.contains("coordination")) { // for ease of debugging only
+            if (origHeaders0.containsKey(TRACEPARENT_HEADER)) {
+                String value = origHeaders0.get(TRACEPARENT_HEADER);
+                int k = 0;
+            }
+        }
         final User user0 = getThreadContext().getTransient(ConfigConstants.OPENDISTRO_SECURITY_USER);
         final String injectedUserString = getThreadContext().getTransient(ConfigConstants.OPENDISTRO_SECURITY_INJECTED_USER);
         final String injectedRolesString = getThreadContext().getTransient(ConfigConstants.OPENDISTRO_SECURITY_INJECTED_ROLES);
@@ -182,7 +190,9 @@ public class SecurityInterceptor {
                                 && !(request instanceof SearchRequest)
                                 && !(request instanceof GetRequest))
                             || k.startsWith("_opendistro_security_trace")
-                            || k.startsWith(ConfigConstants.OPENDISTRO_SECURITY_INITIAL_ACTION_CLASS_HEADER))
+                            || k.startsWith(ConfigConstants.OPENDISTRO_SECURITY_INITIAL_ACTION_CLASS_HEADER)
+                            || k.equals(TRACEPARENT_HEADER))
+                        // TODO: Add to filter thingy here?
                 )
             );
 
@@ -257,6 +267,10 @@ public class SecurityInterceptor {
                 );
             }
 
+            // TODO: Finished with extra crap. Check what `sender` is here.
+            if (origHeaders0.containsKey(TRACEPARENT_HEADER)) {
+                int k = 0;
+            }
             sender.sendRequest(connection, action, request, options, restoringHandler);
         }
     }
