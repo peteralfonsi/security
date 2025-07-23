@@ -44,6 +44,7 @@ import org.opensearch.action.search.MultiSearchResponse;
 import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.action.search.SearchScrollRequest;
+import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.index.mapper.SourceFieldMapper;
 import org.opensearch.index.mapper.size.SizeFieldMapper;
@@ -55,6 +56,7 @@ import org.opensearch.search.aggregations.Aggregation;
 import org.opensearch.search.aggregations.metrics.ParsedAvg;
 import org.opensearch.search.builder.SearchSourceBuilder;
 import org.opensearch.search.sort.SortOrder;
+import org.opensearch.tasks.Task;
 import org.opensearch.test.framework.TestSecurityConfig;
 import org.opensearch.test.framework.cluster.ClusterManager;
 import org.opensearch.test.framework.cluster.LocalCluster;
@@ -87,6 +89,7 @@ import static org.opensearch.security.Song.FIELD_TITLE;
 import static org.opensearch.security.Song.QUERY_TITLE_NEXT_SONG;
 import static org.opensearch.security.Song.SONGS;
 import static org.opensearch.security.Song.TITLE_NEXT_SONG;
+import static org.opensearch.security.support.ConfigConstants.TRACEPARENT_HEADER;
 import static org.opensearch.test.framework.TestSecurityConfig.AuthcDomain.AUTHC_HTTPBASIC_INTERNAL;
 import static org.opensearch.test.framework.TestSecurityConfig.Role.ALL_ACCESS;
 import static org.opensearch.test.framework.cluster.SearchRequestFactory.averageAggregationRequest;
@@ -303,7 +306,7 @@ public class FlsAndFieldMaskingTests {
     );
 
     @ClassRule
-    public static final LocalCluster cluster = new LocalCluster.Builder().clusterManager(ClusterManager.THREE_CLUSTER_MANAGERS)
+    public static final LocalCluster cluster = new LocalCluster.Builder().clusterManager(ClusterManager.THREE_CLUSTER_MANAGERS_COORDINATOR)//.clusterManager(ClusterManager.THREE_CLUSTER_MANAGERS)
         .anonymousAuth(false)
         .nodeSettings(
             Map.of("plugins.security.restapi.roles_enabled", List.of("user_" + ADMIN_USER.getName() + "__" + ALL_ACCESS.getName()))
@@ -621,6 +624,42 @@ public class FlsAndFieldMaskingTests {
             assertThat(searchResponse, searchHitContainsFieldWithValue(0, FIELD_LYRICS, VALUE_TO_MASKED_VALUE.apply(song.getLyrics())));
             assertThat(searchResponse, searchHitContainsFieldWithValue(0, FIELD_ARTIST, song.getArtist()));
             assertThat(searchResponse, searchHitContainsFieldWithValue(0, FIELD_STARS, song.getStars()));
+        }
+    }
+
+    // TODO: This is only a debug test, for learning about flow via breakpoints.
+    @Test
+    public void searchForDocumentsOnce() throws IOException {
+        // FIELD MASKING
+        try (RestHighLevelClient restHighLevelClient = cluster.getRestHighLevelClient(MASKED_ARTIST_LYRICS_READER)) {
+            String songId = FIRST_INDEX_ID_SONG_1;
+            Song song = FIRST_INDEX_SONGS_BY_ID.get(songId);
+
+            SearchRequest searchRequest = queryByIdsRequest(FIRST_INDEX_NAME, songId);
+            RequestOptions headersOptions = RequestOptions.DEFAULT.toBuilder().addHeader(TRACEPARENT_HEADER, "test_value").addHeader(Task.X_OPAQUE_ID, "test").build();
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, headersOptions); // I think I can inject http headers in the RequestOptions (second) param
+
+            assertThat(searchResponse, isSuccessfulSearchResponse());
+            assertThat(searchResponse, numberOfTotalHitsIsEqualTo(1));
+            assertThat(searchResponse, searchHitsContainDocumentWithId(0, FIRST_INDEX_NAME, songId));
+            assertThat(searchResponse, searchHitContainsFieldWithValue(0, FIELD_TITLE, song.getTitle()));
+            assertThat(searchResponse, searchHitContainsFieldWithValue(0, FIELD_LYRICS, VALUE_TO_MASKED_VALUE.apply(song.getLyrics())));
+            assertThat(searchResponse, searchHitContainsFieldWithValue(0, FIELD_ARTIST, VALUE_TO_MASKED_VALUE.apply(song.getArtist())));
+            assertThat(searchResponse, searchHitContainsFieldWithValue(0, FIELD_STARS, song.getStars()));
+
+            /*songId = SECOND_INDEX_ID_SONG_2;
+            song = SECOND_INDEX_SONGS_BY_ID.get(songId);
+
+            searchRequest = queryByIdsRequest(SECOND_INDEX_NAME, songId);
+            searchResponse = restHighLevelClient.search(searchRequest, DEFAULT);
+
+            assertThat(searchResponse, isSuccessfulSearchResponse());
+            assertThat(searchResponse, numberOfTotalHitsIsEqualTo(1));
+            assertThat(searchResponse, searchHitsContainDocumentWithId(0, SECOND_INDEX_NAME, songId));
+            assertThat(searchResponse, searchHitContainsFieldWithValue(0, FIELD_TITLE, song.getTitle()));
+            assertThat(searchResponse, searchHitContainsFieldWithValue(0, FIELD_LYRICS, VALUE_TO_MASKED_VALUE.apply(song.getLyrics())));
+            assertThat(searchResponse, searchHitContainsFieldWithValue(0, FIELD_ARTIST, song.getArtist()));
+            assertThat(searchResponse, searchHitContainsFieldWithValue(0, FIELD_STARS, song.getStars()));*/
         }
     }
 

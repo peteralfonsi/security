@@ -432,6 +432,8 @@ public class ConfigConstants {
         "plugins.security.experimental.resource_sharing.protected_types";
     public static final List<String> OPENSEARCH_RESOURCE_SHARING_PROTECTED_TYPES_DEFAULT = List.of(); // defaults to no registered types as
                                                                                                       // protected
+    // TODO: Present here for testing only, may not be right place for it.
+    public static final String TRACEPARENT_HEADER = "traceparent";
 
     public static Set<String> getSettingAsSet(
         final Settings settings,
