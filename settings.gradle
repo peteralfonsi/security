@@ -5,6 +5,8 @@
  */
 
 rootProject.name = 'opensearch-security'
+includeBuild("../../opensearch/OpenSearch")
+
 
 include "spi"
 project(":spi").name = rootProject.name + "-spi"
