@@ -905,9 +905,6 @@ public final class OpenSearchSecurityPlugin extends OpenSearchSecuritySSLPlugin
 
                         @Override
                         public void messageReceived(T request, TransportChannel channel, Task task) throws Exception {
-                            if (request instanceof ActionRequest || request instanceof ShardSearchRequest) {
-                                int k = 0;
-                            }
                             si.getHandler(action, actualHandler).messageReceived(request, channel, task);
                         }
                     };
@@ -927,10 +924,6 @@ public final class OpenSearchSecurityPlugin extends OpenSearchSecuritySSLPlugin
                             TransportRequestOptions options,
                             TransportResponseHandler<T> handler
                         ) {
-                            if (request instanceof ActionRequest || request instanceof ShardSearchRequest) {
-                                // TODO: Probably want to filter only on ShardSearchRequest + maybe some others?
-                                int k = 0;
-                            }
                             si.sendRequestDecorate(sender, connection, action, request, options, handler, localNode.get());
                         }
                     };

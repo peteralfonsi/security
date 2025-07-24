@@ -126,7 +126,10 @@ public class SecurityRestFilter {
 
         @Override
         public void handleRequest(RestRequest request, RestChannel channel, NodeClient client) throws Exception {
-            // TODO: Start security REST request logging here?
+            final String traceparentFromRequest = request.header(TRACEPARENT_HEADER);
+            if (traceparentFromRequest != null) {
+                log.info("Security plugin rest request handler started processing request with traceparent = " + traceparentFromRequest);
+            }
             final Optional<SecurityResponse> maybeSavedResponse = NettyAttribute.popFrom(
                 request,
                 Netty4HttpRequestHeaderVerifier.EARLY_RESPONSE
@@ -141,13 +144,20 @@ public class SecurityRestFilter {
             NettyAttribute.popFrom(request, Netty4HttpRequestHeaderVerifier.CONTEXT_TO_RESTORE).ifPresent(storedContext -> {
                 // X_OPAQUE_ID will be overritten on restore - save to apply after restoring the saved context
                 final String xOpaqueId = threadContext.getHeader(Task.X_OPAQUE_ID);
-                final String traceparent = threadContext.getHeader(TRACEPARENT_HEADER); // TODO: This is null even when it shouldnt be
+                // TODO: This is null. For X_OPAQUE_ID, why do we get this from traceparent anyway (and it's not null there?)
+                //   After all, aren't both headers right there in the rest request?
+                final String traceparentFromContext = threadContext.getHeader(TRACEPARENT_HEADER);
                 storedContext.restore();
                 if (xOpaqueId != null) {
                     threadContext.putHeader(Task.X_OPAQUE_ID, xOpaqueId);
                 }
-                if (traceparent != null) {
-                    threadContext.putHeader(TRACEPARENT_HEADER, traceparent);
+                // TODO: I'm not at all confident of this. Not sure why X_OPAQUE_ID is using the thread context at all rather than the request.
+                //   However after adding to threadcontext here (from request, in my test it's null in incoming context, the header propagates
+                //   to SecurityInterceptor.sendRequestDecorate.
+                if (traceparentFromRequest != null) {
+                    threadContext.putHeader(TRACEPARENT_HEADER, traceparentFromRequest);
+                } else if (traceparentFromContext != null) {
+                    threadContext.putHeader(TRACEPARENT_HEADER, traceparentFromContext);
                 }
             });
 
@@ -195,6 +205,9 @@ public class SecurityRestFilter {
                 return;
             }
 
+            if (traceparentFromRequest != null) {
+                log.info("Security plugin rest request handler finished processing request with traceparent = " + traceparentFromRequest);
+            }
             // Caller was authorized, forward the request to the handler
             delegate.handleRequest(request, channel, client);
         }

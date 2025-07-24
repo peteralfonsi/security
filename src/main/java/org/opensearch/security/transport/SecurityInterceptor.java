@@ -144,11 +144,11 @@ public class SecurityInterceptor {
         DiscoveryNode localNode
     ) {
         final Map<String, String> origHeaders0 = getThreadContext().getHeaders();
-        if (!action.contains("coordination")) { // for ease of debugging only
-            if (origHeaders0.containsKey(TRACEPARENT_HEADER)) {
-                String value = origHeaders0.get(TRACEPARENT_HEADER);
-                int k = 0;
-            }
+        // Rather than filtering for one of the many types of TransportRequest that can be caused by search, just check
+        // for presence of TRACEPARENT_HEADER for e2e logging. Non-search requests should not have this.
+        final String traceparent = origHeaders0.get(TRACEPARENT_HEADER);
+        if (traceparent != null) {
+            log.info("Security plugin transport send handler started processing request with traceparent = " + traceparent);
         }
         final User user0 = getThreadContext().getTransient(ConfigConstants.OPENDISTRO_SECURITY_USER);
         final String injectedUserString = getThreadContext().getTransient(ConfigConstants.OPENDISTRO_SECURITY_INJECTED_USER);
@@ -192,7 +192,6 @@ public class SecurityInterceptor {
                             || k.startsWith("_opendistro_security_trace")
                             || k.startsWith(ConfigConstants.OPENDISTRO_SECURITY_INITIAL_ACTION_CLASS_HEADER)
                             || k.equals(TRACEPARENT_HEADER))
-                        // TODO: Add to filter thingy here?
                 )
             );
 
@@ -266,10 +265,8 @@ public class SecurityInterceptor {
                             .collect(Collectors.toMap(p -> p.getKey(), p -> p.getValue()))
                 );
             }
-
-            // TODO: Finished with extra crap. Check what `sender` is here.
-            if (origHeaders0.containsKey(TRACEPARENT_HEADER)) {
-                int k = 0;
+            if (traceparent != null) {
+                log.info("Security plugin transport send handler finished processing request with traceparent = " + traceparent);
             }
             sender.sendRequest(connection, action, request, options, restoringHandler);
         }
