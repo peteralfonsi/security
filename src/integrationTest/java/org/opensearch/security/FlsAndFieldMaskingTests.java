@@ -306,7 +306,7 @@ public class FlsAndFieldMaskingTests {
     );
 
     @ClassRule
-    public static final LocalCluster cluster = new LocalCluster.Builder().clusterManager(ClusterManager.THREE_CLUSTER_MANAGERS_COORDINATOR)//.clusterManager(ClusterManager.THREE_CLUSTER_MANAGERS)
+    public static final LocalCluster cluster = new LocalCluster.Builder().clusterManager(ClusterManager.THREE_CLUSTER_MANAGERS_COORDINATOR)// .clusterManager(ClusterManager.THREE_CLUSTER_MANAGERS)
         .anonymousAuth(false)
         .nodeSettings(
             Map.of("plugins.security.restapi.roles_enabled", List.of("user_" + ADMIN_USER.getName() + "__" + ALL_ACCESS.getName()))
@@ -636,8 +636,13 @@ public class FlsAndFieldMaskingTests {
             Song song = FIRST_INDEX_SONGS_BY_ID.get(songId);
 
             SearchRequest searchRequest = queryByIdsRequest(FIRST_INDEX_NAME, songId);
-            RequestOptions headersOptions = RequestOptions.DEFAULT.toBuilder().addHeader(TRACEPARENT_HEADER, "test_value").addHeader(Task.X_OPAQUE_ID, "test").build();
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, headersOptions); // I think I can inject http headers in the RequestOptions (second) param
+            RequestOptions headersOptions = RequestOptions.DEFAULT.toBuilder()
+                .addHeader(TRACEPARENT_HEADER, "test_value")
+                .addHeader(Task.X_OPAQUE_ID, "test")
+                .build();
+            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, headersOptions); // I think I can inject http headers
+                                                                                                       // in the RequestOptions (second)
+                                                                                                       // param
 
             assertThat(searchResponse, isSuccessfulSearchResponse());
             assertThat(searchResponse, numberOfTotalHitsIsEqualTo(1));
