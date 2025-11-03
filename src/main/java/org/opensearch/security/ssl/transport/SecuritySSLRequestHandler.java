@@ -90,9 +90,7 @@ public class SecuritySSLRequestHandler<T extends TransportRequest> implements Tr
     public final void messageReceived(T request, TransportChannel channel, Task task) throws Exception {
         ThreadContext threadContext = getThreadContext();
         String traceparent = threadContext.getHeader(TRACEPARENT_HEADER);
-        if (traceparent != null) {
-            log.info("Security plugin transport received handler started processing request with traceparent = " + traceparent);
-        }
+        long startTime = System.nanoTime();
 
         String channelType = channel.getChannelType();
         if (!DEFAULT_CHANNEL_TYPES.contains(channelType)) {
@@ -110,7 +108,7 @@ public class SecuritySSLRequestHandler<T extends TransportRequest> implements Tr
         }
 
         if (!"transport".equals(channel.getChannelType())) { // netty4
-            logFinishedReceivedHandler(traceparent);
+            logFinishedReceivedHandler(traceparent, startTime);
             messageReceivedDecorate(request, actualHandler, channel, task);
             return;
         }
@@ -121,7 +119,7 @@ public class SecuritySSLRequestHandler<T extends TransportRequest> implements Tr
                 if (SSLConfig.isDualModeEnabled()) {
                     log.info("Communication in dual mode. Skipping SSL handler check");
                     threadContext.putTransient(ConfigConstants.SECURITY_SSL_DUAL_MODE_SKIP_SECURITY, Boolean.TRUE);
-                    logFinishedReceivedHandler(traceparent);
+                    logFinishedReceivedHandler(traceparent, startTime);
                     messageReceivedDecorate(request, actualHandler, channel, task);
                     return;
                 }
@@ -161,7 +159,7 @@ public class SecuritySSLRequestHandler<T extends TransportRequest> implements Tr
                         sslhandler.engine().getSession().getCipherSuite()
                     );
                 }
-                logFinishedReceivedHandler(traceparent);
+                logFinishedReceivedHandler(traceparent, startTime);
                 messageReceivedDecorate(request, actualHandler, channel, task);
             } else {
                 final String msg = "No X509 transport client certificates found (SG 12)";
@@ -183,9 +181,16 @@ public class SecuritySSLRequestHandler<T extends TransportRequest> implements Tr
         }
     }
 
-    private void logFinishedReceivedHandler(String traceparent) {
+    private void logFinishedReceivedHandler(String traceparent, long startTime) {
         if (traceparent != null) {
-            log.info("Security plugin transport received handler finished processing request with traceparent = " + traceparent);
+            long elapsed = System.nanoTime() - startTime;
+            log.info(
+                "Security plugin transport received handler finished processing request with traceparent = "
+                    + traceparent
+                    + " in "
+                    + elapsed
+                    + "ns"
+            );
         }
     }
 

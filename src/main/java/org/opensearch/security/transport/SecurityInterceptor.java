@@ -147,11 +147,9 @@ public class SecurityInterceptor {
     ) {
         final Map<String, String> origHeaders0 = getThreadContext().getHeaders();
         // Rather than filtering for one of the many types of TransportRequest that can be caused by search, just check
-        // for presence of TRACEPARENT_HEADER for e2e logging. Non-search requests should not have this.
+        // for presence of TRACEPARENT_HEADER for e2e logging.
         final String traceparent = origHeaders0.get(TRACEPARENT_HEADER);
-        if (traceparent != null) {
-            log.info("Security plugin transport send handler started processing request with traceparent = " + traceparent);
-        }
+        long startTime = System.nanoTime();
         final User user0 = getThreadContext().getTransient(ConfigConstants.OPENDISTRO_SECURITY_USER);
         final String injectedUserString = getThreadContext().getTransient(ConfigConstants.OPENDISTRO_SECURITY_INJECTED_USER);
         final String injectedRolesString = getThreadContext().getTransient(ConfigConstants.OPENDISTRO_SECURITY_INJECTED_ROLES);
@@ -275,7 +273,14 @@ public class SecurityInterceptor {
                 );
             }
             if (traceparent != null) {
-                log.info("Security plugin transport send handler finished processing request with traceparent = " + traceparent);
+                long elapsed = System.nanoTime() - startTime;
+                log.info(
+                    "Security plugin transport send handler finished processing request with traceparent = "
+                        + traceparent
+                        + "in "
+                        + elapsed
+                        + "ns"
+                );
             }
             sender.sendRequest(connection, action, request, options, restoringHandler);
         }
