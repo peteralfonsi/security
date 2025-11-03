@@ -75,6 +75,7 @@ import org.opensearch.transport.TransportRequestOptions;
 import org.opensearch.transport.TransportResponseHandler;
 import org.opensearch.transport.stream.StreamTransportResponse;
 
+import static org.opensearch.security.filter.SecurityRestFilter.getLoggingThresholdNanos;
 import static org.opensearch.security.support.ConfigConstants.TRACEPARENT_HEADER;
 
 public class SecurityInterceptor {
@@ -272,8 +273,8 @@ public class SecurityInterceptor {
                             .collect(Collectors.toMap(p -> p.getKey(), p -> p.getValue()))
                 );
             }
-            if (traceparent != null) {
-                long elapsed = System.nanoTime() - startTime;
+            long elapsed = System.nanoTime() - startTime;
+            if (traceparent != null && elapsed > getLoggingThresholdNanos()) {
                 log.info(
                     "Security plugin transport send handler finished processing request with traceparent = "
                         + traceparent

@@ -31,11 +31,13 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
 import org.opensearch.common.settings.Settings;
+import org.opensearch.common.unit.TimeValue;
 import org.opensearch.security.auditlog.impl.AuditCategory;
 
 import com.password4j.types.Hmac;
@@ -413,6 +415,9 @@ public class ConfigConstants {
     public static final String USER_ATTRIBUTE_SERIALIZATION_ENABLED = SECURITY_SETTINGS_PREFIX + "user_attribute_serialization.enabled";
     public static final boolean USER_ATTRIBUTE_SERIALIZATION_ENABLED_DEFAULT = false;
 
+    public static final String TOOKTIME_LOG_THRESHOLD = SECURITY_SETTINGS_PREFIX + "log_threshold";
+    public static final TimeValue TOOKTIME_LOG_THRESHOLD_DEFAULT = new TimeValue(250, TimeUnit.MILLISECONDS);
+
     // On-behalf-of endpoints settings
     // CS-SUPPRESS-SINGLE: RegexpSingleline get Extensions Settings
     public static final String EXTENSIONS_BWC_PLUGIN_MODE = "bwcPluginMode";
@@ -432,7 +437,6 @@ public class ConfigConstants {
         "plugins.security.experimental.resource_sharing.protected_types";
     public static final List<String> OPENSEARCH_RESOURCE_SHARING_PROTECTED_TYPES_DEFAULT = List.of(); // defaults to no registered types as
                                                                                                       // protected
-    // TODO: Present here for testing only, may not be right place for it.
     public static final String TRACEPARENT_HEADER = "traceparent";
 
     public static Set<String> getSettingAsSet(

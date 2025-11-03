@@ -12,6 +12,7 @@
 package org.opensearch.security.support;
 
 import org.opensearch.common.settings.Setting;
+import org.opensearch.common.unit.TimeValue;
 
 public class SecuritySettings {
     public static final Setting<Boolean> LEGACY_OPENDISTRO_SSL_DUAL_MODE_SETTING = Setting.boolSetting(
@@ -42,4 +43,11 @@ public class SecuritySettings {
         Setting.Property.NodeScope,
         Setting.Property.Dynamic
     ); // Not filtered
+
+    public static final Setting<TimeValue> TOOKTIME_LOG_THRESHOLD_SETTING = Setting.timeSetting(
+        ConfigConstants.TOOKTIME_LOG_THRESHOLD,
+        ConfigConstants.TOOKTIME_LOG_THRESHOLD_DEFAULT,
+        Setting.Property.NodeScope,
+        Setting.Property.Dynamic
+    );
 }

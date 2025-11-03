@@ -42,6 +42,7 @@ import org.opensearch.transport.TransportRequestHandler;
 
 import io.netty.handler.ssl.SslHandler;
 
+import static org.opensearch.security.filter.SecurityRestFilter.getLoggingThresholdNanos;
 import static org.opensearch.security.support.ConfigConstants.TRACEPARENT_HEADER;
 
 public class SecuritySSLRequestHandler<T extends TransportRequest> implements TransportRequestHandler<T> {
@@ -182,8 +183,8 @@ public class SecuritySSLRequestHandler<T extends TransportRequest> implements Tr
     }
 
     private void logFinishedReceivedHandler(String traceparent, long startTime) {
-        if (traceparent != null) {
-            long elapsed = System.nanoTime() - startTime;
+        long elapsed = System.nanoTime() - startTime;
+        if (traceparent != null && elapsed > getLoggingThresholdNanos()) {
             log.info(
                 "Security plugin transport received handler finished processing request with traceparent = "
                     + traceparent

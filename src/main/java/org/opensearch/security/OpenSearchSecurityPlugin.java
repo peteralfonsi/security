@@ -1109,6 +1109,7 @@ public final class OpenSearchSecurityPlugin extends OpenSearchSecuritySSLPlugin
         Supplier<RepositoriesService> repositoriesServiceSupplier
     ) {
         SSLConfig.registerClusterSettingsChangeListener(clusterService.getClusterSettings());
+        SecurityRestFilter.registerClusterSettingsChangeListener(clusterService.getClusterSettings());
         if (SSLConfig.isSslOnlyMode()) {
             return super.createComponents(
                 localClient,
@@ -1549,6 +1550,7 @@ public final class OpenSearchSecurityPlugin extends OpenSearchSecuritySSLPlugin
                 Property.Final
             )
         );
+        settings.add(SecuritySettings.TOOKTIME_LOG_THRESHOLD_SETTING);
 
         if (!SSLConfig.isSslOnlyMode()) {
             settings.add(

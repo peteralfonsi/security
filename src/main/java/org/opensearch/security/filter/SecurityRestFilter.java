@@ -40,7 +40,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import org.opensearch.OpenSearchException;
+import org.opensearch.common.settings.ClusterSettings;
 import org.opensearch.common.settings.Settings;
+import org.opensearch.common.unit.TimeValue;
 import org.opensearch.common.util.concurrent.ThreadContext;
 import org.opensearch.core.rest.RestStatus;
 import org.opensearch.core.xcontent.XContentBuilder;
@@ -65,6 +67,7 @@ import org.opensearch.security.ssl.util.SSLRequestHelper;
 import org.opensearch.security.ssl.util.SSLRequestHelper.SSLInfo;
 import org.opensearch.security.support.ConfigConstants;
 import org.opensearch.security.support.HTTPHelper;
+import org.opensearch.security.support.SecuritySettings;
 import org.opensearch.security.user.User;
 import org.opensearch.tasks.Task;
 import org.opensearch.threadpool.ThreadPool;
@@ -76,6 +79,7 @@ import static org.opensearch.security.OpenSearchSecurityPlugin.LEGACY_OPENDISTRO
 import static org.opensearch.security.OpenSearchSecurityPlugin.PLUGINS_PREFIX;
 import static org.opensearch.security.support.ConfigConstants.OPENDISTRO_SECURITY_INITIATING_USER;
 import static org.opensearch.security.support.ConfigConstants.SECURITY_PERFORM_PERMISSION_CHECK_PARAM;
+import static org.opensearch.security.support.ConfigConstants.TOOKTIME_LOG_THRESHOLD_DEFAULT;
 import static org.opensearch.security.support.ConfigConstants.TRACEPARENT_HEADER;
 
 public class SecurityRestFilter {
@@ -97,6 +101,8 @@ public class SecurityRestFilter {
 
     public static final String REGEX_PATH_PREFIX = "/(" + LEGACY_OPENDISTRO_PREFIX + "|" + PLUGINS_PREFIX + ")/" + "(.*)";
     public static final Pattern PATTERN_PATH_PREFIX = Pattern.compile(REGEX_PATH_PREFIX);
+
+    private static TimeValue loggingThreshold = TOOKTIME_LOG_THRESHOLD_DEFAULT;
 
     public SecurityRestFilter(
         final BackendRegistry registry,
@@ -211,8 +217,8 @@ public class SecurityRestFilter {
                 return;
             }
 
-            if (traceparentFromRequest != null) {
-                long elapsed = System.nanoTime() - startTime;
+            long elapsed = System.nanoTime() - startTime;
+            if (traceparentFromRequest != null && elapsed >= getLoggingThresholdNanos()) {
                 log.info(
                     "Security plugin rest request handler processed request with traceparent header = "
                         + traceparentFromRequest
@@ -391,5 +397,20 @@ public class SecurityRestFilter {
             }
         }
         return true;
+    }
+
+    public static void registerClusterSettingsChangeListener(final ClusterSettings clusterSettings) {
+        clusterSettings.addSettingsUpdateConsumer(
+            SecuritySettings.TOOKTIME_LOG_THRESHOLD_SETTING,
+            SecurityRestFilter::updateTooktimeLogThreshold
+        );
+    }
+
+    private static void updateTooktimeLogThreshold(TimeValue newThreshold) {
+        loggingThreshold = newThreshold;
+    }
+
+    public static long getLoggingThresholdNanos() {
+        return loggingThreshold.getNanos();
     }
 }
