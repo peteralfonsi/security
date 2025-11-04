@@ -10,6 +10,9 @@ package org.opensearch.security.ssl.http.netty;
 
 import java.util.Set;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import org.opensearch.ExceptionsHelper;
 import org.opensearch.OpenSearchSecurityException;
 import org.opensearch.common.settings.Settings;
@@ -34,6 +37,9 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.util.AttributeKey;
 import io.netty.util.ReferenceCountUtil;
 
+import static org.opensearch.security.filter.SecurityRestFilter.getLoggingThresholdNanos;
+import static org.opensearch.security.support.ConfigConstants.TRACEPARENT_HEADER;
+
 @Sharable
 public class Netty4HttpRequestHeaderVerifier extends SimpleChannelInboundHandler<HttpRequest> {
     public static final AttributeKey<Boolean> IS_AUTHENTICATED = AttributeKey.newInstance("opensearch-http-is-authenticated");
@@ -49,6 +55,7 @@ public class Netty4HttpRequestHeaderVerifier extends SimpleChannelInboundHandler
     private final SSLConfig sslConfig;
     private final boolean injectUserEnabled;
     private final boolean passthrough;
+    protected final Logger log = LogManager.getLogger(this.getClass());
 
     public Netty4HttpRequestHeaderVerifier(SecurityRestFilter restFilter, ThreadPool threadPool, Settings settings) {
         this.restFilter = restFilter;
@@ -67,6 +74,7 @@ public class Netty4HttpRequestHeaderVerifier extends SimpleChannelInboundHandler
 
     @Override
     public void channelRead0(ChannelHandlerContext ctx, HttpRequest msg) throws Exception {
+        long startTime = System.nanoTime();
         // DefaultHttpRequest should always be first and contain headers
         ReferenceCountUtil.retain(msg);
 
@@ -83,6 +91,7 @@ public class Netty4HttpRequestHeaderVerifier extends SimpleChannelInboundHandler
 
         final SecurityRequestChannel requestChannel = SecurityRequestFactory.from(msg, httpChannel);
         ThreadContext threadContext = threadPool.getThreadContext();
+        String traceparent = msg.headers().get(TRACEPARENT_HEADER);
         try (ThreadContext.StoredContext ignore = threadPool.getThreadContext().stashContext()) {
             injectUser(msg, threadContext);
 
@@ -111,6 +120,16 @@ public class Netty4HttpRequestHeaderVerifier extends SimpleChannelInboundHandler
         } catch (final SecurityRequestChannelUnsupported srcu) {
             // Use defaults for unsupported channels
         } finally {
+            long elapsed = System.nanoTime() - startTime;
+            if (traceparent != null && elapsed >= getLoggingThresholdNanos()) {
+                log.info(
+                    "Security plugin header verifier handler processed request with traceparent header = "
+                        + traceparent
+                        + " in "
+                        + elapsed
+                        + "ns"
+                );
+            }
             ctx.fireChannelRead(msg);
         }
     }

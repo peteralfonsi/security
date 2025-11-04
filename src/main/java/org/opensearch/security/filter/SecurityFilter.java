@@ -101,7 +101,9 @@ import org.opensearch.threadpool.ThreadPool;
 
 import static org.opensearch.security.OpenSearchSecurityPlugin.isActionTraceEnabled;
 import static org.opensearch.security.OpenSearchSecurityPlugin.traceAction;
+import static org.opensearch.security.filter.SecurityRestFilter.getLoggingThresholdNanos;
 import static org.opensearch.security.support.ConfigConstants.SECURITY_PERFORM_PERMISSION_CHECK_PARAM;
+import static org.opensearch.security.support.ConfigConstants.TRACEPARENT_HEADER;
 
 public class SecurityFilter implements ActionFilter {
 
@@ -187,8 +189,11 @@ public class SecurityFilter implements ActionFilter {
         ActionListener<Response> listener,
         ActionFilterChain<Request, Response> chain
     ) {
+        String traceparent = null;
+        long startTime = System.nanoTime();
         try {
             ThreadContext threadContext = threadPool.getThreadContext();
+            traceparent = threadContext.getHeader(TRACEPARENT_HEADER);
             if (threadContext.getTransient(ConfigConstants.OPENDISTRO_SECURITY_ORIGIN) == null) {
                 threadContext.putTransient(ConfigConstants.OPENDISTRO_SECURITY_ORIGIN, Origin.LOCAL.toString());
             }
@@ -518,6 +523,11 @@ public class SecurityFilter implements ActionFilter {
         } catch (Throwable e) {
             log.error("Unexpected exception {}", e, e);
             listener.onFailure(new OpenSearchSecurityException("Unexpected exception " + action, RestStatus.INTERNAL_SERVER_ERROR));
+        } finally {
+            long elapsed = System.nanoTime() - startTime;
+            if (traceparent != null && elapsed >= getLoggingThresholdNanos()) {
+                log.info("Security plugin filter processed request with traceparent header = " + traceparent + " in " + elapsed + "ns");
+            }
         }
     }
 

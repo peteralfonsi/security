@@ -146,6 +146,7 @@ public class SecurityRestFilter {
                 NettyAttribute.clearAttribute(request, Netty4HttpRequestHeaderVerifier.CONTEXT_TO_RESTORE);
                 NettyAttribute.clearAttribute(request, Netty4HttpRequestHeaderVerifier.IS_AUTHENTICATED);
                 channel.sendResponse(maybeSavedResponse.get().asRestResponse());
+                logHandleRequest(traceparentFromRequest, startTime);
                 return;
             }
 
@@ -212,23 +213,26 @@ public class SecurityRestFilter {
             }
 
             authorizeRequest(delegate, requestChannel, user);
+            logHandleRequest(traceparentFromRequest, startTime);
             if (requestChannel.getQueuedResponse().isPresent()) {
                 channel.sendResponse(requestChannel.getQueuedResponse().get().asRestResponse());
                 return;
             }
+            // Caller was authorized, forward the request to the handler
+            delegate.handleRequest(request, channel, client);
+        }
 
+        private void logHandleRequest(String traceparent, long startTime) {
             long elapsed = System.nanoTime() - startTime;
-            if (traceparentFromRequest != null && elapsed >= getLoggingThresholdNanos()) {
+            if (traceparent != null && elapsed >= getLoggingThresholdNanos()) {
                 log.info(
                     "Security plugin rest request handler processed request with traceparent header = "
-                        + traceparentFromRequest
+                        + traceparent
                         + " in "
                         + elapsed
                         + "ns"
                 );
             }
-            // Caller was authorized, forward the request to the handler
-            delegate.handleRequest(request, channel, client);
         }
 
         private void handleSuperAdminPermissionCheck(RestChannel channel) throws Exception {
