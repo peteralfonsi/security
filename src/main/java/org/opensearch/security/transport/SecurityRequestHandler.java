@@ -75,6 +75,8 @@ public class SecurityRequestHandler<T extends TransportRequest> extends Security
     private final ClusterService cs;
     private final UserFactory userFactory;
     private static final Set<String> knownChannelTypes = Set.of("direct", "transport", "stream-transport");
+    private static final String END_TO_END_LOGGING_BASE_STRING =
+        "Security plugin transport received handler finished processing request with traceparent = ";
 
     SecurityRequestHandler(
         String action,

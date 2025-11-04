@@ -101,9 +101,9 @@ import org.opensearch.threadpool.ThreadPool;
 
 import static org.opensearch.security.OpenSearchSecurityPlugin.isActionTraceEnabled;
 import static org.opensearch.security.OpenSearchSecurityPlugin.traceAction;
-import static org.opensearch.security.filter.SecurityRestFilter.getLoggingThresholdNanos;
 import static org.opensearch.security.support.ConfigConstants.SECURITY_PERFORM_PERMISSION_CHECK_PARAM;
 import static org.opensearch.security.support.ConfigConstants.TRACEPARENT_HEADER;
+import static org.opensearch.security.util.EndToEndLoggingHelper.maybeLogEndToEnd;
 
 public class SecurityFilter implements ActionFilter {
 
@@ -121,6 +121,7 @@ public class SecurityFilter implements ActionFilter {
     private final RolesInjector rolesInjector;
     private final UserInjector userInjector;
     private final ResourceAccessEvaluator resourceAccessEvaluator;
+    public static final String END_TO_END_LOGGING_BASE_STRING = "Security plugin filter processed request with traceparent header = ";
 
     public SecurityFilter(
         final Settings settings,
@@ -524,10 +525,7 @@ public class SecurityFilter implements ActionFilter {
             log.error("Unexpected exception {}", e, e);
             listener.onFailure(new OpenSearchSecurityException("Unexpected exception " + action, RestStatus.INTERNAL_SERVER_ERROR));
         } finally {
-            long elapsed = System.nanoTime() - startTime;
-            if (traceparent != null && elapsed >= getLoggingThresholdNanos()) {
-                log.info("Security plugin filter processed request with traceparent header = " + traceparent + " in " + elapsed + "ns");
-            }
+            maybeLogEndToEnd(traceparent, startTime, END_TO_END_LOGGING_BASE_STRING, log);
         }
     }
 

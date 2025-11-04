@@ -224,6 +224,7 @@ import org.opensearch.security.transport.SecurityInterceptor;
 import org.opensearch.security.user.User;
 import org.opensearch.security.user.UserFactory;
 import org.opensearch.security.user.UserService;
+import org.opensearch.security.util.EndToEndLoggingHelper;
 import org.opensearch.tasks.Task;
 import org.opensearch.telemetry.tracing.Tracer;
 import org.opensearch.threadpool.ThreadPool;
@@ -1109,7 +1110,7 @@ public final class OpenSearchSecurityPlugin extends OpenSearchSecuritySSLPlugin
         Supplier<RepositoriesService> repositoriesServiceSupplier
     ) {
         SSLConfig.registerClusterSettingsChangeListener(clusterService.getClusterSettings());
-        SecurityRestFilter.registerClusterSettingsChangeListener(clusterService.getClusterSettings());
+        EndToEndLoggingHelper.registerClusterSettingsChangeListener(clusterService.getClusterSettings());
         if (SSLConfig.isSslOnlyMode()) {
             return super.createComponents(
                 localClient,

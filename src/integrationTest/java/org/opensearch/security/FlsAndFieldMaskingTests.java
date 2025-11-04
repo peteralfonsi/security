@@ -303,7 +303,7 @@ public class FlsAndFieldMaskingTests {
     );
 
     @ClassRule
-    public static final LocalCluster cluster = new LocalCluster.Builder().clusterManager(ClusterManager.THREE_CLUSTER_MANAGERS_COORDINATOR)// .clusterManager(ClusterManager.THREE_CLUSTER_MANAGERS)
+    public static final LocalCluster cluster = new LocalCluster.Builder().clusterManager(ClusterManager.THREE_CLUSTER_MANAGERS)
         .anonymousAuth(false)
         .nodeSettings(
             Map.of("plugins.security.restapi.roles_enabled", List.of("user_" + ADMIN_USER.getName() + "__" + ALL_ACCESS.getName()))

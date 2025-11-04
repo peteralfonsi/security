@@ -42,8 +42,8 @@ import org.opensearch.transport.TransportRequestHandler;
 
 import io.netty.handler.ssl.SslHandler;
 
-import static org.opensearch.security.filter.SecurityRestFilter.getLoggingThresholdNanos;
 import static org.opensearch.security.support.ConfigConstants.TRACEPARENT_HEADER;
+import static org.opensearch.security.util.EndToEndLoggingHelper.maybeLogEndToEnd;
 
 public class SecuritySSLRequestHandler<T extends TransportRequest> implements TransportRequestHandler<T> {
 
@@ -56,6 +56,8 @@ public class SecuritySSLRequestHandler<T extends TransportRequest> implements Tr
     private final SSLConfig SSLConfig;
 
     private static final Set<String> DEFAULT_CHANNEL_TYPES = Set.of("direct", "transport", "stream-transport");
+    public static final String END_TO_END_LOGGING_BASE_STRING =
+        "Security plugin rest request handler processed request with traceparent header = ";
 
     public SecuritySSLRequestHandler(
         String action,
@@ -109,7 +111,7 @@ public class SecuritySSLRequestHandler<T extends TransportRequest> implements Tr
         }
 
         if (!"transport".equals(channel.getChannelType())) { // netty4
-            logFinishedReceivedHandler(traceparent, startTime);
+            maybeLogEndToEnd(traceparent, startTime, END_TO_END_LOGGING_BASE_STRING, log);
             messageReceivedDecorate(request, actualHandler, channel, task);
             return;
         }
@@ -120,7 +122,7 @@ public class SecuritySSLRequestHandler<T extends TransportRequest> implements Tr
                 if (SSLConfig.isDualModeEnabled()) {
                     log.info("Communication in dual mode. Skipping SSL handler check");
                     threadContext.putTransient(ConfigConstants.SECURITY_SSL_DUAL_MODE_SKIP_SECURITY, Boolean.TRUE);
-                    logFinishedReceivedHandler(traceparent, startTime);
+                    maybeLogEndToEnd(traceparent, startTime, END_TO_END_LOGGING_BASE_STRING, log);
                     messageReceivedDecorate(request, actualHandler, channel, task);
                     return;
                 }
@@ -160,7 +162,7 @@ public class SecuritySSLRequestHandler<T extends TransportRequest> implements Tr
                         sslhandler.engine().getSession().getCipherSuite()
                     );
                 }
-                logFinishedReceivedHandler(traceparent, startTime);
+                maybeLogEndToEnd(traceparent, startTime, END_TO_END_LOGGING_BASE_STRING, log);
                 messageReceivedDecorate(request, actualHandler, channel, task);
             } else {
                 final String msg = "No X509 transport client certificates found (SG 12)";
@@ -179,19 +181,6 @@ public class SecuritySSLRequestHandler<T extends TransportRequest> implements Tr
         } catch (final Exception e) {
             errorHandler.logError(e, request, action, task, 0);
             throw e;
-        }
-    }
-
-    private void logFinishedReceivedHandler(String traceparent, long startTime) {
-        long elapsed = System.nanoTime() - startTime;
-        if (traceparent != null && elapsed > getLoggingThresholdNanos()) {
-            log.info(
-                "Security plugin transport received handler finished processing request with traceparent = "
-                    + traceparent
-                    + " in "
-                    + elapsed
-                    + "ns"
-            );
         }
     }
 

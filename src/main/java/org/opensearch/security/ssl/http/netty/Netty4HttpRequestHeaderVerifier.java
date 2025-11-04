@@ -37,8 +37,8 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.util.AttributeKey;
 import io.netty.util.ReferenceCountUtil;
 
-import static org.opensearch.security.filter.SecurityRestFilter.getLoggingThresholdNanos;
 import static org.opensearch.security.support.ConfigConstants.TRACEPARENT_HEADER;
+import static org.opensearch.security.util.EndToEndLoggingHelper.maybeLogEndToEnd;
 
 @Sharable
 public class Netty4HttpRequestHeaderVerifier extends SimpleChannelInboundHandler<HttpRequest> {
@@ -56,6 +56,8 @@ public class Netty4HttpRequestHeaderVerifier extends SimpleChannelInboundHandler
     private final boolean injectUserEnabled;
     private final boolean passthrough;
     protected final Logger log = LogManager.getLogger(this.getClass());
+    public static final String END_TO_END_LOGGING_BASE_STRING =
+        "Security plugin header verifier handler processed request with traceparent header = ";
 
     public Netty4HttpRequestHeaderVerifier(SecurityRestFilter restFilter, ThreadPool threadPool, Settings settings) {
         this.restFilter = restFilter;
@@ -120,16 +122,7 @@ public class Netty4HttpRequestHeaderVerifier extends SimpleChannelInboundHandler
         } catch (final SecurityRequestChannelUnsupported srcu) {
             // Use defaults for unsupported channels
         } finally {
-            long elapsed = System.nanoTime() - startTime;
-            if (traceparent != null && elapsed >= getLoggingThresholdNanos()) {
-                log.info(
-                    "Security plugin header verifier handler processed request with traceparent header = "
-                        + traceparent
-                        + " in "
-                        + elapsed
-                        + "ns"
-                );
-            }
+            maybeLogEndToEnd(traceparent, startTime, END_TO_END_LOGGING_BASE_STRING, log);
             ctx.fireChannelRead(msg);
         }
     }

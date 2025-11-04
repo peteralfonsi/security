@@ -75,8 +75,8 @@ import org.opensearch.transport.TransportRequestOptions;
 import org.opensearch.transport.TransportResponseHandler;
 import org.opensearch.transport.stream.StreamTransportResponse;
 
-import static org.opensearch.security.filter.SecurityRestFilter.getLoggingThresholdNanos;
 import static org.opensearch.security.support.ConfigConstants.TRACEPARENT_HEADER;
+import static org.opensearch.security.util.EndToEndLoggingHelper.maybeLogEndToEnd;
 
 public class SecurityInterceptor {
 
@@ -93,6 +93,8 @@ public class SecurityInterceptor {
     private final SSLConfig SSLConfig;
     private final Supplier<Boolean> actionTraceEnabled;
     private final UserFactory userFactory;
+    public final static String END_TO_END_LOGGING_BASE_STRING =
+        "Security plugin transport send handler finished processing request with traceparent = ";
 
     public SecurityInterceptor(
         final Settings settings,
@@ -273,16 +275,7 @@ public class SecurityInterceptor {
                             .collect(Collectors.toMap(p -> p.getKey(), p -> p.getValue()))
                 );
             }
-            long elapsed = System.nanoTime() - startTime;
-            if (traceparent != null && elapsed > getLoggingThresholdNanos()) {
-                log.info(
-                    "Security plugin transport send handler finished processing request with traceparent = "
-                        + traceparent
-                        + "in "
-                        + elapsed
-                        + "ns"
-                );
-            }
+            maybeLogEndToEnd(traceparent, startTime, END_TO_END_LOGGING_BASE_STRING, log);
             sender.sendRequest(connection, action, request, options, restoringHandler);
         }
     }
