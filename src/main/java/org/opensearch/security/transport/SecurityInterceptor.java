@@ -93,8 +93,7 @@ public class SecurityInterceptor {
     private final SSLConfig SSLConfig;
     private final Supplier<Boolean> actionTraceEnabled;
     private final UserFactory userFactory;
-    public final static String END_TO_END_LOGGING_BASE_STRING =
-        "Security plugin transport send handler finished processing request with traceparent = ";
+    public final static String END_TO_END_LOGGING_BASE_STRING = "Security plugin transport send handler processed request";
 
     public SecurityInterceptor(
         final Settings settings,

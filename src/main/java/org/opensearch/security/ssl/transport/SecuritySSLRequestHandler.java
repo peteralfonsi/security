@@ -56,8 +56,7 @@ public class SecuritySSLRequestHandler<T extends TransportRequest> implements Tr
     private final SSLConfig SSLConfig;
 
     private static final Set<String> DEFAULT_CHANNEL_TYPES = Set.of("direct", "transport", "stream-transport");
-    public static final String END_TO_END_LOGGING_BASE_STRING =
-        "Security plugin rest request handler processed request with traceparent header = ";
+    public static final String END_TO_END_LOGGING_BASE_STRING = "Security plugin rest request handler processed request";
 
     public SecuritySSLRequestHandler(
         String action,

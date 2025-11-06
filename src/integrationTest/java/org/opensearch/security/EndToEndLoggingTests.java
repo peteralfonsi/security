@@ -74,9 +74,6 @@ public class EndToEndLoggingTests {
 
     @Test
     public void testLogging() throws Exception {
-        Map<String, Object> nodeSettings = new HashMap<>();
-        nodeSettings.put(TOOKTIME_LOG_THRESHOLD, TimeValue.ZERO); // TODO: Setting this to 0 here is not having any effect
-
         // Setup code so we can inspect log output - see https://www.dontpanicblog.co.uk/2018/04/29/test-log4j2-with-junit/
         Logger e2eLoggerRestFilter = (Logger) LogManager.getLogger(SecurityRestFilter.class);
         Logger e2eLoggerHeaderVerifier = (Logger) LogManager.getLogger(Netty4HttpRequestHeaderVerifier.class);
@@ -109,48 +106,71 @@ public class EndToEndLoggingTests {
             loggerOutputs.put(logger, loggerOutput);
         }
 
-        try (final LocalCluster cluster = createCluster(nodeSettings)) {
-            String traceparentValue = "test-001";
-            try (final TestRestClient client = cluster.getRestClient(USER_ADMIN, new BasicHeader(TRACEPARENT_HEADER, traceparentValue))) {
-                Awaitility.await()
-                    .alias("Wait for security to initialize")
-                    .until(() -> client.securityHealth().getTextFromJsonBody("/status"), equalTo("UP"));
+        try (final LocalCluster cluster = createCluster(new HashMap<>())) {
+            List<String> traceparentValues = new ArrayList<>();
+            traceparentValues.add("test-001"); // We can't do List.of() for null
+            traceparentValues.add("");
+            traceparentValues.add(null);
+            for (String traceparentValue : traceparentValues) {
+                try (
+                    final TestRestClient client = cluster.getRestClient(USER_ADMIN, new BasicHeader(TRACEPARENT_HEADER, traceparentValue))
+                ) {
+                    Awaitility.await()
+                        .alias("Wait for security to initialize")
+                        .until(() -> client.securityHealth().getTextFromJsonBody("/status"), equalTo("UP"));
 
-                try (Client internalClient = cluster.getInternalNodeClient()) {
-                    ClusterUpdateSettingsRequest request = new ClusterUpdateSettingsRequest().transientSettings(
-                        Settings.builder().put(TOOKTIME_LOG_THRESHOLD, TimeValue.ZERO).build()
-                    );
-                    internalClient.admin().cluster().updateSettings(request).actionGet();
-                }
+                    try (Client internalClient = cluster.getInternalNodeClient()) {
+                        ClusterUpdateSettingsRequest request = new ClusterUpdateSettingsRequest().transientSettings(
+                            Settings.builder().put(TOOKTIME_LOG_THRESHOLD, TimeValue.ZERO).build()
+                        );
+                        internalClient.admin().cluster().updateSettings(request).actionGet();
+                    }
 
-                TestRestClient.HttpResponse response = client.get("_cat/indices");
-                assertThat(response, isOk());
+                    for (CharArrayWriter output : loggerOutputs.values()) {
+                        output.reset();
+                    }
 
-                // Assert we see the relevant message at least once for each logger
-                for (Logger logger : loggerStrings.keySet()) {
-                    CharArrayWriter output = loggerOutputs.get(logger);
-                    String msg = loggerStrings.get(logger);
-                    assertTrue(output.toString().contains(msg));
-                    output.reset();
-                }
+                    TestRestClient.HttpResponse response = client.get("_cat/indices");
+                    assertThat(response, isOk());
 
-                // Now set the threshold very high and assert we see no logs
-                try (Client internalClient = cluster.getInternalNodeClient()) {
-                    ClusterUpdateSettingsRequest request = new ClusterUpdateSettingsRequest().transientSettings(
-                        Settings.builder().put(TOOKTIME_LOG_THRESHOLD, new TimeValue(1, TimeUnit.DAYS)).build()
-                    );
-                    internalClient.admin().cluster().updateSettings(request).actionGet();
-                }
-                response = client.get("_cat/indices");
-                assertThat(response, isOk());
+                    // Assert we see the relevant message at least once for each logger
+                    for (Logger logger : loggerStrings.keySet()) {
+                        CharArrayWriter output = loggerOutputs.get(logger);
+                        String msg = getExpectedMessage(loggerStrings.get(logger), traceparentValue);
+                        assertTrue(output.toString().contains(msg));
+                        output.reset();
+                    }
 
-                for (Logger logger : loggerStrings.keySet()) {
-                    CharArrayWriter output = loggerOutputs.get(logger);
-                    String msg = loggerStrings.get(logger);
-                    assertFalse(output.toString().contains(msg));
-                    output.reset();
+                    // Now set the threshold very high and assert we see no logs
+                    try (Client internalClient = cluster.getInternalNodeClient()) {
+                        ClusterUpdateSettingsRequest request = new ClusterUpdateSettingsRequest().transientSettings(
+                            Settings.builder().put(TOOKTIME_LOG_THRESHOLD, new TimeValue(1, TimeUnit.DAYS)).build()
+                        );
+                        internalClient.admin().cluster().updateSettings(request).actionGet();
+                    }
+                    for (CharArrayWriter output : loggerOutputs.values()) {
+                        output.reset();
+                    }
+                    response = client.get("_cat/indices");
+                    assertThat(response, isOk());
+
+                    for (Logger logger : loggerStrings.keySet()) {
+                        CharArrayWriter output = loggerOutputs.get(logger);
+                        String msg = getExpectedMessage(loggerStrings.get(logger), traceparentValue);
+                        assertFalse(output.toString().contains(msg));
+                        output.reset();
+                    }
                 }
             }
         }
+    }
+
+    private String getExpectedMessage(String baseMessage, String traceparentValue) {
+        if (traceparentValue != null && !traceparentValue.isEmpty()) {
+            baseMessage += " with traceparent header = " + traceparentValue;
+        } else {
+            baseMessage += " with no traceparent header";
+        }
+        return baseMessage;
     }
 }

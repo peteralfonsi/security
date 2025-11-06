@@ -99,8 +99,7 @@ public class SecurityRestFilter {
     public static final String REGEX_PATH_PREFIX = "/(" + LEGACY_OPENDISTRO_PREFIX + "|" + PLUGINS_PREFIX + ")/" + "(.*)";
     public static final Pattern PATTERN_PATH_PREFIX = Pattern.compile(REGEX_PATH_PREFIX);
 
-    public static final String END_TO_END_LOGGING_BASE_STRING =
-        "Security plugin rest request handler processed request with traceparent header = ";
+    public static final String END_TO_END_LOGGING_BASE_STRING = "Security plugin rest request handler processed request";
 
     public SecurityRestFilter(
         final BackendRegistry registry,

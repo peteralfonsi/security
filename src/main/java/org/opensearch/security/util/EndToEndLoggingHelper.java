@@ -28,8 +28,11 @@ public class EndToEndLoggingHelper {
 
     public static void maybeLogEndToEnd(String traceparent, long startTime, String baseLogString, Logger log) {
         long elapsed = System.nanoTime() - startTime;
-        if (traceparent != null && elapsed >= getLoggingThresholdNanos()) {
-            log.info(baseLogString + traceparent + " in " + elapsed + "ns");
+        if (elapsed < getLoggingThresholdNanos()) return;
+        if (traceparent != null && !traceparent.isEmpty()) {
+            log.info(baseLogString + " with traceparent header = " + traceparent + " in " + elapsed + "ns");
+        } else {
+            log.info(baseLogString + " with no traceparent header in " + elapsed + "ns");
         }
     }
 }

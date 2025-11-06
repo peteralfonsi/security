@@ -121,7 +121,7 @@ public class SecurityFilter implements ActionFilter {
     private final RolesInjector rolesInjector;
     private final UserInjector userInjector;
     private final ResourceAccessEvaluator resourceAccessEvaluator;
-    public static final String END_TO_END_LOGGING_BASE_STRING = "Security plugin filter processed request with traceparent header = ";
+    public static final String END_TO_END_LOGGING_BASE_STRING = "Security plugin filter processed request";
 
     public SecurityFilter(
         final Settings settings,

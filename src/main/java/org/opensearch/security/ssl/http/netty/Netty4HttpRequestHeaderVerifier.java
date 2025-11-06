@@ -56,8 +56,7 @@ public class Netty4HttpRequestHeaderVerifier extends SimpleChannelInboundHandler
     private final boolean injectUserEnabled;
     private final boolean passthrough;
     protected final Logger log = LogManager.getLogger(this.getClass());
-    public static final String END_TO_END_LOGGING_BASE_STRING =
-        "Security plugin header verifier handler processed request with traceparent header = ";
+    public static final String END_TO_END_LOGGING_BASE_STRING = "Security plugin header verifier handler processed request";
 
     public Netty4HttpRequestHeaderVerifier(SecurityRestFilter restFilter, ThreadPool threadPool, Settings settings) {
         this.restFilter = restFilter;
